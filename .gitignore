@@ -53,3 +53,15 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# database
+*.db
+
+# build/install output
+client/INSTALL/
+
+# compiled binaries
+client/test
+client/INSTALL/bin/testclient
+server/testserver
+server/socket-poll
