@@ -14,6 +14,8 @@
 #define DEFAULT_INTERVAL 3
 #define CLIENT_DB_FILE "../etc/client.db"
 #define JSON_BUF_SIZE 256
+#define REUPLOAD_INTERVAL 1
+#define MAX_REUPLOAD_ONCE 2
 
 static void print_usage(char *progname)
 {
@@ -50,8 +52,9 @@ static int send_packet(socket_t *sock, const packet_t *pack)
 static void upload_cached_packets(sqlite3 *db, socket_t *sock)
 {
     packet_t pack;
+    int uploaded = 0;
 
-    while (database_count(db) > 0)
+    while (database_count(db) > 0 && uploaded < MAX_REUPLOAD_ONCE)
     {
         if (database_pop(db, &pack) < 0)
         {
@@ -66,6 +69,7 @@ static void upload_cached_packets(sqlite3 *db, socket_t *sock)
             break;
         }
 
+        uploaded++;
         log_info("cached packet reuploaded\n");
     }
 }
@@ -79,6 +83,7 @@ int main(int argc, char *argv[])
     int port = 0;
     int interval_time = DEFAULT_INTERVAL;
     time_t last_sample_time = 0;
+    time_t last_reupload_time = 0;
     int ch;
 
     struct option opts[] = {
@@ -132,8 +137,13 @@ int main(int argc, char *argv[])
             if (socket_connect(&sock) == 0)
             {
                 log_info("connected to server %s:%d\n", sock.host, sock.port);
-                upload_cached_packets(db, &sock);
             }
+        }
+
+        if (socket_check_connect(&sock) > 0 &&
+            interval_timer(&last_reupload_time, REUPLOAD_INTERVAL))
+        {
+            upload_cached_packets(db, &sock);
         }
 
         if (interval_timer(&last_sample_time, interval_time))
