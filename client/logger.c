@@ -236,7 +236,7 @@ void log_dump(int level, const char *prompt, char *buf, size_t len)
         {
             unsigned char c = buf[idx];
             snprintf(hc, 4, "%02X ", c);
-            strncat(prn, hc, LINELEN);
+            strncat(prn, hc, sizeof(prn) - strlen(prn) - 1);
  
             lit[idx % CHARS_PER_LINE] = print_char[c];
         }
