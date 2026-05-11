@@ -15,6 +15,7 @@
 typedef struct socket_s
 {
     int fd;
+    char domain[64];
     char host[64];
     int port;
     int connected;

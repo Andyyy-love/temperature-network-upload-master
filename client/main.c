@@ -132,18 +132,21 @@ int main(int argc, char *argv[])
 
     while (1)
     {
-        if (socket_check_connect(&sock) <= 0)
+        int connected = socket_check_connect(&sock);
+
+        if (!connected)
         {
-            if (socket_connect(&sock) == 0)
+            connected = (socket_connect(&sock) == 0);
+            if (connected)
             {
                 log_info("connected to server %s:%d\n", sock.host, sock.port);
             }
         }
 
-        if (socket_check_connect(&sock) > 0 &&
-            interval_timer(&last_reupload_time, REUPLOAD_INTERVAL))
+        if (connected && interval_timer(&last_reupload_time, REUPLOAD_INTERVAL))
         {
             upload_cached_packets(db, &sock);
+            connected = socket_check_connect(&sock);
         }
 
         if (interval_timer(&last_sample_time, interval_time))
@@ -154,19 +157,14 @@ int main(int argc, char *argv[])
                 continue;
             }
 
-            if (socket_check_connect(&sock) > 0)
+            if (connected && send_packet(&sock, &pack) == 0)
             {
-                if (send_packet(&sock, &pack) < 0)
-                {
-                    database_insert(db, &pack);
-                    log_warn("network error, packet saved into sqlite\n");
-                }
+                continue;
             }
-            else
-            {
-                database_insert(db, &pack);
-                log_warn("server offline, packet saved into sqlite\n");
-            }
+
+            connected = 0;
+            database_insert(db, &pack);
+            log_warn("server offline, packet saved into sqlite\n");
         }
 
         usleep(100000);

@@ -34,9 +34,9 @@ int socket_init(socket_t *sock, char *host, int port)
     sock->connected = 0;
     sock->port = port;
 
-    if (host && socket_resolver(host, sock->host) != 0)
+    if (host)
     {
-        strncpy(sock->host, host, sizeof(sock->host) - 1);
+        strncpy(sock->domain, host, sizeof(sock->domain) - 1);
     }
 
     return 0;
@@ -70,6 +70,11 @@ int socket_connect(socket_t *sock)
     }
 
     socket_close(sock);
+
+    if (socket_resolver(sock->domain, sock->host) != 0)
+    {
+        strncpy(sock->host, sock->domain, sizeof(sock->host) - 1);
+    }
 
     conn_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (conn_fd < 0)
