@@ -2,6 +2,7 @@
 #include <getopt.h>
 #include <libgen.h>
 #include <poll.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,6 +15,14 @@
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 #define SERVER_DB_FILE "server.db"
+
+static volatile sig_atomic_t g_running = 1;
+
+static void handle_signal(int sig)
+{
+    (void)sig;
+    g_running = 0;
+}
 
 static void print_usage(char *progname)
 {
@@ -73,6 +82,20 @@ static void handle_client_data(sqlite3 *db, struct pollfd *pfd)
     }
 }
 
+static void close_all_fds(struct pollfd *fds_array, int nfds)
+{
+    int i;
+
+    for (i = 0; i < nfds; i++)
+    {
+        if (fds_array[i].fd >= 0)
+        {
+            close(fds_array[i].fd);
+            fds_array[i].fd = -1;
+        }
+    }
+}
+
 int main(int argc, char **argv)
 {
     sqlite3 *db = NULL;
@@ -116,6 +139,9 @@ int main(int argc, char **argv)
         return -1;
     }
 
+    signal(SIGINT, handle_signal);
+    signal(SIGTERM, handle_signal);
+
     listenfd = socket_server_init(NULL, serv_port);
     if (listenfd < 0)
     {
@@ -145,11 +171,15 @@ int main(int argc, char **argv)
 
     printf("%s server listening on port %d\n", argv[0], serv_port);
 
-    for (;;)
+    while (g_running)
     {
         rv = poll(fds_array, max + 1, -1);
         if (rv < 0)
         {
+            if (errno == EINTR)
+            {
+                continue;
+            }
             printf("poll failure: %s\n", strerror(errno));
             break;
         }
@@ -177,7 +207,7 @@ int main(int argc, char **argv)
         }
     }
 
+    close_all_fds(fds_array, (int)ARRAY_SIZE(fds_array));
     database_close(db);
-    close(listenfd);
     return 0;
 }
