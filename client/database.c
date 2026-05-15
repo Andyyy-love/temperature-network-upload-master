@@ -35,6 +35,7 @@ void database_close(sqlite3 *db)
     if (db)
     {
         sqlite3_close(db);
+        sqlite3_shutdown();
     }
 }
 

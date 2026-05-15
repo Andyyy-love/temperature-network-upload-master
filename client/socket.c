@@ -2,22 +2,29 @@
 
 int socket_resolver(const char *domain, char *ipaddr)
 {
-    struct hostent *host = NULL;
-    struct in_addr addr;
+    struct addrinfo hints;
+    struct addrinfo *result = NULL;
+    struct sockaddr_in *addr = NULL;
+    int rv;
 
     if (!domain || !ipaddr)
     {
         return -1;
     }
 
-    host = gethostbyname(domain);
-    if (!host)
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+
+    rv = getaddrinfo(domain, NULL, &hints, &result);
+    if (rv != 0 || !result)
     {
         return -2;
     }
 
-    memcpy(&addr, host->h_addr_list[0], sizeof(addr));
-    inet_ntop(AF_INET, &addr, ipaddr, 16);
+    addr = (struct sockaddr_in *)result->ai_addr;
+    inet_ntop(AF_INET, &addr->sin_addr, ipaddr, 16);
+    freeaddrinfo(result);
 
     return 0;
 }

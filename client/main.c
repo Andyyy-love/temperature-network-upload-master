@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <getopt.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,6 +17,14 @@
 #define JSON_BUF_SIZE 256
 #define REUPLOAD_INTERVAL 1
 #define MAX_REUPLOAD_ONCE 2
+
+static volatile sig_atomic_t g_running = 1;
+
+static void handle_signal(int sig)
+{
+    (void)sig;
+    g_running = 0;
+}
 
 static void print_usage(char *progname)
 {
@@ -120,6 +129,8 @@ int main(int argc, char *argv[])
     }
 
     log_open("console", LOG_LEVEL_DEBUG, 0, LOG_LOCK_DISABLE);
+    signal(SIGINT, handle_signal);
+    signal(SIGTERM, handle_signal);
 
     if (database_open(&db, CLIENT_DB_FILE) < 0)
     {
@@ -130,7 +141,7 @@ int main(int argc, char *argv[])
     socket_init(&sock, servip, port);
     log_info("client started, server=%s:%d interval=%d\n", servip, port, interval_time);
 
-    while (1)
+    while (g_running)
     {
         int connected = socket_check_connect(&sock);
 
@@ -170,6 +181,7 @@ int main(int argc, char *argv[])
         usleep(100000);
     }
 
+    socket_close(&sock);
     database_close(db);
     log_close();
     return 0;
