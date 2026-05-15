@@ -206,4 +206,29 @@ packet.c/h    JSON 数据解析
 cJSON.c/h     JSON 解析接口
 database.c/h  SQLite 数据库存储
 ```
+## 内存泄漏检查Valgrind命令
+```
+cd INSTALL/bin
+valgrind --leak-check=full --show-leak-kinds=all ./testclient -i 127.0.0.1 -p 8080 -t 3
+```
+```
+--leak-check=full   详细检查内存泄漏。
 
+
+--show-leak-kinds=all 把所有类型的泄漏信息都显示出来，包括：
+definitely lost    明确泄漏
+indirectly lost    间接泄漏
+possibly lost      可能泄漏
+still reachable    程序退出时还可访问
+
+```
+
+```
+正常结束后，如果看到：
+==4455== All heap blocks were freed -- no leaks are possible
+说明没有内存泄漏。
+```
+```
+Invalid read ... libarmmem-v7l.so
+这个可以先不用管，它更像是树莓派优化库和 Valgrind 的兼容问题，不是业务代码泄漏。
+```
